@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Keep Dibba Bolega as a single-route, client-state prototype because all cross-role demo flows must work without a backend.
