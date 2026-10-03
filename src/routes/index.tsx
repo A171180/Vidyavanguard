@@ -1,24 +1,176 @@
 import { createFileRoute } from "@tanstack/react-router";
+import {
+  ArrowRight, Check, CircleDollarSign, Factory, Info, Leaf, MapPin, Mic,
+  Play, RadioTower, Recycle, RotateCcw, ShieldAlert, ShoppingBag, Star,
+  Truck, Upload, UserRound, Volume2, type LucideIcon,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
+type Language = "pa" | "hi" | "en";
+type Role = "villager" | "driver" | "gp" | "buyer";
+type StockKey = "wet" | "paper" | "pet" | "mlp" | "hazardous";
+type Bin = { id: string; name: string; ward: number; fill: number; sensor?: boolean; requested?: boolean };
+type Enquiry = { id: number; buyer: string; material: StockKey; quantity: number; rate: number; status: "pending" | "approved" | "rejected" };
+type DemoUser = [string, string, string, string];
+
+const initialBins: Bin[] = [
+  { id: "BIN-W1-01", name: "बड़ा चौक", ward: 1, fill: 88, sensor: true },
+  { id: "BIN-W1-02", name: "गुरुद्वारा गली", ward: 1, fill: 45 },
+  { id: "BIN-W2-01", name: "प्राथमिक स्कूल", ward: 2, fill: 82, sensor: true },
+  { id: "BIN-W2-02", name: "पानी टंकी", ward: 2, fill: 30 },
+  { id: "BIN-W3-01", name: "बस स्टैंड", ward: 3, fill: 94 },
+  { id: "BIN-W3-02", name: "डिस्पेंसरी रोड", ward: 3, fill: 62 },
+  { id: "BIN-W4-01", name: "अनाज मंडी", ward: 4, fill: 85 },
+  { id: "BIN-W4-02", name: "खेल मैदान", ward: 4, fill: 25 },
+  { id: "BIN-W5-01", name: "बस्ती चौक", ward: 5, fill: 91 },
+  { id: "BIN-W5-02", name: "नहर पुल", ward: 5, fill: 55 },
+  { id: "BIN-W2-03", name: "डेयरी रोड", ward: 2, fill: 40 },
+  { id: "BIN-W1-03", name: "पंचायत घर", ward: 1, fill: 70 },
+];
+const users: Record<Role, DemoUser[]> = {
+  villager: [
+    ["VIL-012", "Balwinder Kaur", "वार्ड 2", "H-14"], ["VIL-014", "Gurmeet Singh", "वार्ड 1", "H-08"],
+    ["VIL-019", "Surinder Pal", "वार्ड 4", "H-21"], ["VIL-022", "Simranjeet Bibi", "वार्ड 3", "H-03"],
+  ],
+  driver: [["DRV-01", "Happy Singh", "वार्ड 1, 2, 3", "PB-11 Green Tipper"], ["DRV-02", "Raju Kumar", "वार्ड 4, 5", "PB-08 Clean Tipper"]],
+  gp: [["GP-01", "Sarpanch Harpreet Kaur", "पंचायत घर", "Rampur"]],
+  buyer: [["BUY-01", "Kisan Khad Sahkari", "गीला", "Rampur market"], ["BUY-02", "Rampur Kabadi Network", "कागज़", "Rampur market"], ["BUY-03", "Shree Ganesh PET Recyclers", "PET", "Ludhiana"], ["BUY-04", "Ambuja Co-processing", "MLP", "Bathinda"], ["BUY-05", "Gramin Eco-Paver Works", "MLP", "Rampur"]],
+};
+const fallbackUser: DemoUser = ["DEMO-01", "Demo User", "Rampur", "Demo"];
+const fallbackBin: Bin = { id: "BIN-DEMO", name: "पंचायत घर", ward: 1, fill: 70 };
+const showcaseBins: Bin[] = [
+  { id: "BIN-W1-01", name: "बड़ा चौक", ward: 1, fill: 88, sensor: true },
+  { id: "BIN-W1-02", name: "गुरुद्वारा गली", ward: 1, fill: 62 },
+  { id: "BIN-W2-01", name: "प्राथमिक स्कूल", ward: 2, fill: 92, sensor: true },
+];
+const buyerMaterials: StockKey[] = ["wet", "paper", "pet", "mlp", "mlp"];
+const materialLabels: Record<StockKey, string> = { wet: "गीला", paper: "कागज़", pet: "PET", mlp: "MLP", hazardous: "खतरनाक" };
+
+const copy = {
+  hi: { hello: "नमस्ते", voice: "आवाज़ सुनाएँ", route: "आज का रास्ता", rate: "घर को रेटिंग", overview: "गाँव का हाल", drivers: "ड्राइवर", stock: "भंडार और कमाई", complaints: "शिकायतें", pickup: "गाड़ी बुलाएँ", separate: "कचरा अलग करें", myrating: "मेरी रेटिंग", demo: "डेमो शुरू करें" },
+  en: { hello: "Hello", voice: "Play voice guide", route: "Today's route", rate: "Rate household", overview: "Village overview", drivers: "Drivers", stock: "Stock & income", complaints: "Complaints", pickup: "Call vehicle", separate: "Sort waste", myrating: "My rating", demo: "Start demo" },
+  pa: { hello: "ਸਤ ਸ੍ਰੀ ਅਕਾਲ", voice: "ਆਵਾਜ਼ ਸੁਣੋ", route: "ਅੱਜ ਦਾ ਰਸਤਾ", rate: "ਘਰ ਨੂੰ ਰੇਟਿੰਗ", overview: "ਪਿੰਡ ਦਾ ਹਾਲ", drivers: "ਡਰਾਈਵਰ", stock: "ਭੰਡਾਰ ਤੇ ਕਮਾਈ", complaints: "ਸ਼ਿਕਾਇਤਾਂ", pickup: "ਗੱਡੀ ਬੁਲਾਓ", separate: "ਕੂੜਾ ਵੱਖ ਕਰੋ", myrating: "ਮੇਰੀ ਰੇਟਿੰਗ", demo: "ਡੈਮੋ ਸ਼ੁਰੂ ਕਰੋ" },
+};
+
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({ meta: [
+    { title: "Dibba Bolega • Rampur" },
+    { name: "description", content: "Bins that call. People who answer. Waste that pays." },
+    { property: "og:title", content: "Dibba Bolega • Rampur" },
+    { property: "og:description", content: "A friendly village waste collection and recycling prototype." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
+  ]}), component: App,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
+function App() {
+  const [role, setRole] = useState<Role>("villager");
+  const [userIndex, setUserIndex] = useState(0);
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [lang, setLang] = useState<Language>("hi");
+  const [bins, setBins] = useState(initialBins);
+  const [stock, setStock] = useState<Record<StockKey, number>>({ wet: 120, paper: 45, pet: 30, mlp: 60, hazardous: 5 });
+  const [income, setIncome] = useState(1240);
+  const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
+  const [ratings, setRatings] = useState<string[]>(["समय पर आए और सफाई अच्छी की।", "गीला-सूखा समझाया।"]);
+  const [toast, setToast] = useState("");
+  const user = users[role][userIndex] ?? users[role][0] ?? fallbackUser;
+  const t = copy[lang];
+  useEffect(() => { if (!toast) return; const id = window.setTimeout(() => setToast(""), 2600); return () => window.clearTimeout(id); }, [toast]);
+  const speak = (text: string) => {
+    if (lang === "pa") { setToast("Recorded Punjabi audio plays here"); return; }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) { const u = new SpeechSynthesisUtterance(text); u.lang = lang === "hi" ? "hi-IN" : "en-IN"; window.speechSynthesis.speak(u); }
+  };
+  const reset = () => { setBins(initialBins); setStock({ wet: 120, paper: 45, pet: 30, mlp: 60, hazardous: 5 }); setIncome(1240); setEnquiries([]); setRatings(["समय पर आए और सफाई अच्छी की।", "गीला-सूखा समझाया।"]); setLoggedIn(false); setRole("villager"); setUserIndex(0); };
+  if (!loggedIn) return <Login role={role} setRole={(r) => { setRole(r); setUserIndex(0); }} userIndex={userIndex} setUserIndex={setUserIndex} lang={lang} setLang={setLang} onEnter={() => setLoggedIn(true)} speak={speak} />;
+  return <div className="min-h-svh bg-background text-foreground">
+    <Header role={role} user={user} lang={lang} setLang={setLang} speak={() => speak(role === "gp" ? "एक नज़र में गाँव, डिब्बे और आज की कार्रवाई" : "डिब्बा बोलेगा, आप बस एक बटन दबाइए")} t={t} />
+    {role === "villager" && <Villager bins={bins} setBins={setBins} ratings={ratings} setRatings={setRatings} speak={speak} t={t} notify={setToast} />}
+    {role === "driver" && <Driver bins={bins} setBins={setBins} setStock={setStock} speak={speak} t={t} notify={setToast} />}
+    {role === "gp" && <GP bins={bins} setBins={setBins} stock={stock} setStock={setStock} income={income} setIncome={setIncome} enquiries={enquiries} setEnquiries={setEnquiries} ratings={ratings} speak={speak} t={t} notify={setToast} />}
+    {role === "buyer" && <Buyer userIndex={userIndex} setUserIndex={setUserIndex} stock={stock} enquiries={enquiries} setEnquiries={setEnquiries} speak={speak} notify={setToast} />}
+    <Footer reset={reset} />
+    {toast && <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-2xl bg-foreground px-5 py-3 text-sm font-extrabold text-background shadow-xl">{toast}</div>}
+  </div>;
 }
+
+function Login({ role, setRole, userIndex, setUserIndex, lang, setLang, onEnter, speak }: { role: Role; setRole: (r: Role) => void; userIndex: number; setUserIndex: (n: number) => void; lang: Language; setLang: (l: Language) => void; onEnter: () => void; speak: (s: string) => void }) {
+  const roleOptions: [Role, string, LucideIcon][] = [["villager", "गाँव वाले", UserRound], ["driver", "सफाई वाहन चालक", Truck], ["gp", "ग्राम पंचायत", ShieldAlert], ["buyer", "खरीदार", ShoppingBag]];
+  return <main data-testid="login-screen" className="min-h-svh overflow-hidden bg-background px-4 py-5 text-foreground sm:px-8">
+    <div className="mx-auto flex max-w-6xl flex-col gap-8 lg:grid lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-20 lg:py-12">
+      <section className="hero-panel relative overflow-hidden rounded-[2rem] bg-primary px-6 py-8 text-primary-foreground shadow-hero sm:px-10 sm:py-12">
+        <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-amber/20" /><div className="absolute -bottom-16 -left-10 h-48 w-48 rounded-full border-[18px] border-primary-foreground/5" />
+        <div className="relative z-10 flex items-center gap-3"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-amber text-primary"><Recycle size={28}/></div><div><p className="font-heading text-xl font-black">Dibba Bolega</p><p className="text-xs font-bold text-mint">रामपुर • Rampur</p></div></div>
+        <div className="relative z-10 mt-12 max-w-xl"><p className="mb-3 text-sm font-extrabold text-amber-soft">हर डिब्बे की अपनी आवाज़ है</p><h1 className="font-heading text-4xl font-black leading-[1.04] sm:text-6xl">Bins that call.<br/><span className="text-amber-soft">People who answer.</span></h1><p className="mt-5 max-w-md text-base leading-relaxed text-mint">कूड़ा उठे, गाँव साफ़ रहे और कचरे से कमाई भी हो। छोटा सा डेमो, असली काम के लिए।</p></div>
+        <div className="relative z-10 mt-9 flex items-end justify-center gap-4 rounded-3xl bg-primary-deep/55 px-4 py-5 sm:justify-start">{showcaseBins.map((b, i) => <BinCharacter key={b.id} bin={b} compact={i > 0} speak={speak}/>)}</div>
+      </section>
+      <section className="rounded-[2rem] border border-border bg-card p-5 shadow-panel sm:p-8">
+        <div className="mb-7 flex items-start justify-between gap-3"><div><p className="text-sm font-black text-ochre">कौन इस्तेमाल कर रहा है?</p><h2 className="mt-1 font-heading text-2xl font-black text-primary">डेमो व्यक्ति</h2></div><Language lang={lang} setLang={setLang}/></div>
+        <div className="grid grid-cols-2 gap-2">{roleOptions.map(([key,label,Icon]) => <button key={key} onClick={() => setRole(key)} className={`role-button ${role===key?"role-button-active":""}`}><Icon size={20}/><span>{label}</span></button>)}</div>
+        <div className="mt-6 space-y-2">{users[role].map((u,i) => <button key={u[0]} onClick={() => setUserIndex(i)} className={`user-button ${userIndex===i?"user-button-active":""}`}><span className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-soft-green text-primary"><UserRound size={17}/></span><span><span className="block text-sm font-extrabold text-forest">{u[1]}</span><span className="block text-xs font-bold text-subtle">{u[0]} • {u[2]}</span></span></span><span className={`grid h-6 w-6 place-items-center rounded-full border ${userIndex===i?"border-ochre bg-ochre text-primary-foreground":"border-border"}`}>{userIndex===i&&<Check size={14}/>}</span></button>)}</div>
+        <button onClick={onEnter} className="primary-button mt-7 h-12 w-full">{copy[lang].demo}<ArrowRight size={18}/></button><p className="mt-4 text-center text-xs font-bold text-subtle">सिर्फ डेमो डेटा • कोई असली भुगतान नहीं</p>
+      </section>
+    </div>
+  </main>;
+}
+
+function Language({lang,setLang}:{lang:Language;setLang:(l:Language)=>void}) { return <div className="flex rounded-full bg-secondary p-1">{(["pa","hi","en"] as Language[]).map(l=><button key={l} onClick={()=>setLang(l)} className={`rounded-full px-2.5 py-1 text-[11px] font-black ${lang===l?"bg-primary text-primary-foreground":"text-subtle"}`}>{l==="pa"?"ਪੰਜਾਬੀ":l==="hi"?"हिन्दी":"English"}</button>)}</div> }
+
+function Header({role,user,lang,setLang,speak,t}:{role:Role;user:string[];lang:Language;setLang:(l:Language)=>void;speak:()=>void;t:typeof copy.hi}) {
+ const firstName=user[1]?.split(" ")[0] ?? user[1];
+ const title=role==="villager"?`${t.hello}, ${firstName} 👋`:role==="driver"?`${t.hello}, ${firstName} जी`:role==="gp"?t.overview:"अपना माल बेचें";
+ const subtitle=role==="villager"?"डिब्बा बोलेगा, आप बस एक बटन दबाइए। बाकी रास्ता गाड़ी ढूँढ लेगी।":role==="driver"?"आज पहले लाल डिब्बे, फिर बाकी रास्ता।":role==="gp"?"एक नज़र में गाँव, डिब्बे और आज की कार्रवाई।":"स्टॉक और आपकी ज़रूरत — साफ़ हिसाब।";
+ return <header className="bg-primary text-primary-foreground"><div className="mx-auto max-w-6xl px-4 pb-8 pt-4 sm:px-8"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-2 font-heading font-black"><span className="grid h-9 w-9 place-items-center rounded-xl bg-amber text-primary"><Recycle size={20}/></span>Dibba Bolega</div><div className="flex items-center gap-2"><Language lang={lang} setLang={setLang}/><button className="icon-button bg-primary-deep" onClick={speak} aria-label={t.voice}><Volume2 size={18}/></button></div></div><div className="mt-7 flex items-end justify-between gap-4"><div><p className="text-xs font-bold text-mint">{role==="villager"?`${user[2]} • ${user[3]}`:role==="driver"?user[3]:role==="gp"?`${user[2]} • ${user[0]}`:`${user[0]} • ${user[3]}`}</p><h1 className="mt-2 font-heading text-3xl font-black">{title}</h1><p className="mt-2 max-w-xl text-sm text-mint">{subtitle}</p></div><button className="hidden items-center gap-2 rounded-xl bg-primary-deep px-3 py-2 text-xs font-bold sm:flex" onClick={speak}><Volume2 size={16}/>{t.voice}</button></div></div></header>
+}
+
+function Nav({items,active,setActive}:{items:[string,string,React.ReactNode][];active:string;setActive:(s:string)=>void}) { return <nav className="-mt-4 mb-7 overflow-x-auto"><div className="mx-auto flex w-max min-w-[calc(100%-2rem)] max-w-4xl gap-1 rounded-2xl border border-border bg-card p-1.5 shadow-panel">{items.map(([id,label,icon])=><button key={id} onClick={()=>setActive(id)} className={`nav-button ${active===id?"nav-active":""}`}>{icon}{label}</button>)}</div></nav> }
+
+function Villager({bins,setBins,ratings,setRatings,speak,t,notify}:{bins:Bin[];setBins:React.Dispatch<React.SetStateAction<Bin[]>>;ratings:string[];setRatings:React.Dispatch<React.SetStateAction<string[]>>;speak:(s:string)=>void;t:typeof copy.hi;notify:(s:string)=>void}) {
+ const [tab,setTab]=useState("pickup"), [ward,setWard]=useState(2), [house,setHouse]=useState("H-14"), [reason,setReason]=useState(""), [stars,setStars]=useState(5), [error,setError]=useState("");
+ const target=bins.find(b=>b.ward===ward)??bins[0]??fallbackBin;
+ const request=()=>{setBins(bs=>bs.map(b=>b.id===target.id?{...b,fill:Math.max(88,b.fill),requested:true}:b));notify("गाड़ी को संदेश भेज दिया गया");speak("मुझे खाली करो");};
+ const submitRating=()=>{if(!reason.trim()){setError("रेटिंग का कारण लिखना ज़रूरी है।");return;} setRatings(r=>[reason,...r]);setReason("");setError("");notify("रेटिंग पंचायत तक पहुँच गई");};
+ return <main className="content-wrap"><Nav active={tab} setActive={setTab} items={[["pickup",t.pickup,<Truck size={17} key="a"/>],["separate",t.separate,<Recycle size={17} key="b"/>],["rating",t.myrating,<Star size={17} key="c"/>]]}/>
+ {tab==="pickup"&&<section><SectionTitle kicker="एक बटन का काम" title={t.pickup}/><div className="grid gap-5 lg:grid-cols-[1fr_.8fr]"><div className="panel"><div className="grid gap-4 sm:grid-cols-2"><label className="field-label">घर नंबर<input className="field" value={house} onChange={e=>setHouse(e.target.value)}/></label><label className="field-label">वार्ड<select className="field" value={ward} onChange={e=>setWard(Number(e.target.value))}>{[1,2,3,4,5].map(n=><option key={n}>वार्ड {n}</option>)}</select></label></div><div className="mt-8 flex flex-col items-center rounded-2xl bg-soft-green p-5"><BinCharacter bin={{...target,fill:Math.max(target.fill,82)}} speak={speak}/><p className="mt-3 font-black text-primary">{target.name} • वार्ड {ward}</p><p className="mt-1 text-sm font-bold text-subtle">{target.fill}% भरा है — गाड़ी को दिखाई देगा</p></div><button onClick={request} className="primary-button mt-5 w-full">{t.pickup}<ArrowRight size={18}/></button></div><div className="panel bg-amber-pale"><h3 className="font-heading text-xl font-black text-primary">डिब्बे की आवाज़</h3><p className="mt-2 text-sm font-bold text-subtle">गाड़ी को रास्ता मिल जाएगा</p><div className="mt-6 flex justify-center"><BinCharacter bin={{...target,fill:88}} speak={speak}/></div><p className="mt-5 text-sm leading-relaxed text-subtle">डिब्बा लाल होते ही ड्राइवर की सूची में ऊपर आ जाता है। कोई लंबा फॉर्म नहीं।</p></div></div></section>}
+ {tab==="separate"&&<section><SectionTitle kicker="चार रंग, साफ़ गाँव" title={t.separate}/><div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{([ ["wet","गीला कचरा","पत्ते, खाना",Leaf], ["dry","सूखा कचरा","कागज़, बोतल",Recycle], ["sanitary","सैनिटरी","पैड, डायपर",ShieldAlert], ["hazard","खतरनाक","बैटरी, दवा",Factory] ] as [string,string,string,LucideIcon][]).map(([id,title,desc,Icon])=><div className={`waste-card waste-${id}`} key={id}><Icon size={30}/><h3>{title}</h3><p>{desc}</p><button onClick={()=>speak(title)}><Volume2 size={16}/>सुनें</button></div>)}</div><button className="secondary-button mt-5" disabled><Upload size={17}/>Check waste photo (planned)</button></section>}
+ {tab==="rating"&&<section><SectionTitle kicker="उठान के बाद" title="मेरे ड्राइवर को रेटिंग"/><div className="panel mx-auto max-w-2xl"><div className="flex gap-2">{[1,2,3,4,5].map(n=><button aria-label={`${n} stars`} key={n} onClick={()=>setStars(n)} className={n<=stars?"text-amber":"text-border"}><Star size={34} fill="currentColor"/></button>)}</div><label className="field-label mt-5">कारण<textarea className="field min-h-28" value={reason} onChange={e=>setReason(e.target.value)} placeholder="क्या अच्छा या खराब था?"/></label>{error&&<p className="mt-2 text-sm font-bold text-destructive">{error}</p>}<div className="mt-4 flex flex-wrap gap-2"><label className="secondary-button cursor-pointer"><Upload size={17}/>फोटो<input className="hidden" type="file" accept="image/*"/></label><Recorder notify={notify}/></div><button onClick={submitRating} className="primary-button mt-5 w-full">रेटिंग भेजें</button>{ratings[0]&&<p className="mt-4 rounded-xl bg-soft-green p-3 text-sm font-bold text-primary">हाल की रेटिंग: “{ratings[0]}”</p>}</div></section>}
+ </main>
+}
+
+function Driver({bins,setBins,setStock,speak,t,notify}:{bins:Bin[];setBins:React.Dispatch<React.SetStateAction<Bin[]>>;setStock:React.Dispatch<React.SetStateAction<Record<StockKey,number>>>;speak:(s:string)=>void;t:typeof copy.hi;notify:(s:string)=>void}) {
+ const [tab,setTab]=useState("route"), [collecting,setCollecting]=useState<Bin|null>(null), [weights,setWeights]=useState<Record<StockKey,number>>({wet:0,paper:0,pet:0,mlp:0,hazardous:0}), [sensorWeight,setSensorWeight]=useState(25);
+ const active=bins.filter(b=>b.fill>=80||b.requested); const saved=Math.max(0,Math.round((12-active.length)*48));
+ const finish=()=>{if(!collecting)return;setBins(bs=>bs.map(b=>b.id===collecting.id?{...b,fill:10,requested:false}:b));setStock(s=>Object.fromEntries(Object.entries(s).map(([k,v])=>[k,v+(weights[k as StockKey]||0)])) as Record<StockKey,number>);setCollecting(null);setWeights({wet:0,paper:0,pet:0,mlp:0,hazardous:0});notify("Stock updated — डिब्बा अब खुश है");};
+  return <main className="content-wrap"><Nav active={tab} setActive={setTab} items={[["route",t.route,<MapPin size={17} key="a"/>],["rate",t.rate,<Star size={17} key="b"/>]]}/>{tab==="route"?<><div className="grid grid-cols-3 gap-3"><Kpi value={String(active.length)} label="आज के डिब्बे"/><Kpi value={`${(active.length*1.7).toFixed(1)} km`} label="छोटा रास्ता"/><Kpi value={`₹${saved}`} label="डीज़ल बचत"/></div><div className="mt-5 grid gap-5 lg:grid-cols-[1fr_.65fr]"><section className="panel"><div className="flex justify-between"><SectionTitle kicker={`${active.length} जगह`} title={t.route}/><button title="Assumptions" className="icon-button text-subtle"><Info size={18}/></button></div><div className="space-y-3">{active.map((b,i)=><div className="route-row" key={b.id}><span className="route-number">{i+1}</span><BinCharacter bin={b} compact speak={speak}/><div className="min-w-0 flex-1"><h3 className="font-black text-forest">{b.name}</h3><p className="text-xs font-bold text-subtle">वार्ड {b.ward} • {b.fill}% भरा</p></div><button onClick={()=>setCollecting(b)} className="primary-button shrink-0"><Check size={17}/>कचरा उठा लिया</button></div>)}</div><p className="mt-5 rounded-xl bg-secondary p-3 text-xs font-bold text-subtle">4 km/litre • डीज़ल ₹90/litre • रास्ता nearest-neighbour है। बचत उदाहरण है।</p></section><section className="panel"><h2 className="font-heading text-xl font-black text-primary">गाँव का रास्ता</h2><RouteMap bins={active}/><p className="mt-3 text-center text-xs font-bold text-subtle">{active.length} रुकने • nearest-neighbour</p><div className="mt-5 border-t border-border pt-4"><p className="flex items-center gap-2 font-black text-primary"><RadioTower size={18}/>Sensor bin warning</p><label className="field-label mt-3">Simulated weight: {sensorWeight} kg<input type="range" min="10" max="100" value={sensorWeight} onChange={e=>setSensorWeight(Number(e.target.value))} className="w-full accent-primary"/></label>{sensorWeight>70&&<p className="mt-3 rounded-xl bg-amber-pale p-3 text-sm font-bold text-ochre">This bin feels heavier than normal. Is there wet waste inside?<span className="mt-1 block text-xs">Based on assumed thresholds, needs field calibration.</span></p>}</div></section></div></>:<RatingPanel title="घर को रेटिंग" notify={notify}/>} {collecting&&<Modal title={`${collecting.name} — वजन जोड़ें`} close={()=>setCollecting(null)}><div className="grid grid-cols-2 gap-3">{(Object.keys(weights) as StockKey[]).map(k=><label className="field-label" key={k}>{materialLabels[k]} (kg)<input className="field" type="number" min="0" value={weights[k]} onChange={e=>setWeights(w=>({...w,[k]:Number(e.target.value)}))}/></label>)}</div><button onClick={finish} className="primary-button mt-5 w-full">Stock में जोड़ें</button></Modal>}</main>
+}
+
+function GP({bins,setBins,stock,setStock,income,setIncome,enquiries,setEnquiries,ratings,speak,t,notify}:{bins:Bin[];setBins:React.Dispatch<React.SetStateAction<Bin[]>>;stock:Record<StockKey,number>;setStock:React.Dispatch<React.SetStateAction<Record<StockKey,number>>>;income:number;setIncome:React.Dispatch<React.SetStateAction<number>>;enquiries:Enquiry[];setEnquiries:React.Dispatch<React.SetStateAction<Enquiry[]>>;ratings:string[];speak:(s:string)=>void;t:typeof copy.hi;notify:(s:string)=>void}) {
+ const [tab,setTab]=useState("overview"), full=bins.filter(b=>b.fill>=80).length;
+ const decide=(e:Enquiry,approve:boolean)=>{setEnquiries(xs=>xs.map(x=>x.id===e.id?{...x,status:approve?"approved":"rejected"}:x));if(approve){setStock(s=>({...s,[e.material]:Math.max(0,s[e.material]-e.quantity)}));setIncome(n=>n+e.quantity*e.rate)}notify(approve?"Enquiry approved — stock और income updated":"Enquiry rejected");};
+ return <main className="content-wrap"><Nav active={tab} setActive={setTab} items={[["overview",t.overview,<MapPin size={17} key="a"/>],["drivers",t.drivers,<Truck size={17} key="b"/>],["stock",t.stock,<CircleDollarSign size={17} key="c"/>],["complaints",t.complaints,<Mic size={17} key="d"/>]]}/>
+ {tab==="overview"&&<><div className="grid grid-cols-2 gap-3 lg:grid-cols-4"><Kpi value={`${full}/12`} label="भर चुके डिब्बे"/><Kpi value="5" label="वार्ड साफ़"/><Kpi value={`₹${income.toLocaleString("en-IN")}`} label="आज की बचत"/><Kpi value="84%" label="समय पर उठान"/></div><div className="mt-5 grid gap-5 lg:grid-cols-[.85fr_1.15fr]"><section className="panel"><div className="flex items-center justify-between"><SectionTitle kicker="सभी 12 डिब्बे" title="गाँव का नक्शा"/><span className="text-xs font-bold text-subtle">खुद भरता रहे</span></div><RouteMap bins={bins}/><div className="mt-5 rounded-2xl bg-primary p-5 text-primary-foreground"><p className="text-xs font-black text-amber-soft">आज की बात</p><h3 className="mt-2 text-xl font-black">डिब्बे खुद बता रहे हैं</h3><p className="mt-2 text-sm text-mint">स्लाइडर चलाइए और देखिए — पीला डिब्बा चिंता करता है, लाल डिब्बा गाड़ी बुलाता है।</p></div></section><section className="panel"><SectionTitle kicker="चलता हुआ डेमो" title="हर डिब्बे का स्तर"/><div className="space-y-3">{bins.map(b=><div className="grid grid-cols-[70px_1fr] items-center gap-3 rounded-2xl bg-secondary/60 p-3" key={b.id}><BinCharacter bin={b} tiny speak={speak}/><div><div className="flex items-center justify-between gap-2"><span className="font-black text-forest">{b.name}{b.sensor&&<RadioTower className="ml-1 inline" size={14}/>}</span><b className={b.fill>=80?"text-destructive":"text-primary"}>{b.fill}%</b></div><input aria-label={`${b.name} fill`} type="range" min="0" max="100" value={b.fill} onChange={e=>setBins(bs=>bs.map(x=>x.id===b.id?{...x,fill:Number(e.target.value)}:x))} className="mt-2 w-full accent-primary"/><p className="text-xs font-bold text-subtle">{b.fill>=80?"गाड़ी को बुलावा":b.fill>=50?"नज़र रखें":"अभी ठीक"}</p></div></div>)}</div></section></div></>}
+ {tab==="drivers"&&<section><SectionTitle kicker="काम की पूरी तस्वीर" title="ड्राइवर स्कोर"/><div className="grid gap-4 md:grid-cols-2"><DriverScore name="Happy Singh" id="DRV-01" score={91} best/><DriverScore name="Raju Kumar" id="DRV-02" score={78}/></div><div className="panel mt-5"><h3 className="font-heading text-xl font-black text-primary">स्कोर का वजन</h3><p className="mt-2 text-sm text-subtle">30% punctuality + 30% completed pickups + 25% villager rating (10+ ratings) + 15% complaints solved.</p><p className="mt-4 rounded-xl bg-amber-pale p-3 text-sm font-bold text-ochre">Pattern flag: अलग घरों से 30 दिनों में 3+ कम ratings होने पर जाँच। एक rating पर कार्रवाई नहीं।</p><div className="mt-4 space-y-2">{ratings.map((r,i)=><p key={i} className="rounded-xl border border-border p-3 text-sm">“{r}”</p>)}</div></div></section>}
+ {tab==="stock"&&<section><SectionTitle kicker="साफ़ हिसाब" title="भंडार और कमाई"/><div className="grid gap-5 lg:grid-cols-[1.1fr_.9fr]"><div className="panel overflow-x-auto"><table className="w-full text-left"><thead><tr><th>सामग्री</th><th>स्टॉक</th><th>गुणवत्ता</th><th></th></tr></thead><tbody>{(Object.keys(stock) as StockKey[]).map(k=><tr key={k}><td>{materialLabels[k]}</td><td className="font-black">{stock[k]} kg</td><td><span className={k==="mlp"?"status-warn":"status-ok"}>{k==="mlp"?"Unchecked":"Checked"}</span></td><td><button className="secondary-button">Sell</button></td></tr>)}</tbody></table></div><div className="space-y-4"><div className="panel"><p className="text-xs font-black text-subtle">इस महीने की आय</p><p className="mt-2 text-4xl font-black text-primary">₹{income.toLocaleString("en-IN")}</p><div className="mt-4 flex justify-between text-sm"><span>डीज़ल ₹4,200</span><span>वेतन ₹8,500</span></div></div><div className={`rounded-2xl p-5 font-black ${income>=12700?"bg-soft-green text-primary":"bg-amber-pale text-ochre"}`}>{income>=12700?"इस महीने व्यवस्था self-sustaining है।":"इस महीने खर्च पूरा करने के लिए और बिक्री चाहिए।"}</div>{enquiries.map(e=><div className="panel" key={e.id}><p className="font-black">{e.buyer}</p><p className="text-sm text-subtle">{materialLabels[e.material]} • {e.quantity} kg • ₹{e.rate}/kg</p>{e.status==="pending"?<div className="mt-3 flex gap-2"><button onClick={()=>decide(e,true)} className="primary-button">Approve</button><button onClick={()=>decide(e,false)} className="secondary-button">Reject</button></div>:<span className={e.status==="approved"?"status-ok":"status-warn"}>{e.status}</span>}</div>)}</div></div></section>}
+ {tab==="complaints"&&<section><SectionTitle kicker="आवाज़ का जवाब" title="शिकायतें"/><div className="space-y-3">{([ ["H-14 • वार्ड 2","गाड़ी दो दिन से नहीं आई","Open"], ["H-03 • वार्ड 3","कचरा सड़क पर गिरा","In progress"], ["H-21 • वार्ड 4","अब सफाई हो गई","Solved"] ] as [string,string,string][]).map(([home,message,status],i)=><div className="panel flex items-center gap-4" key={i}><button onClick={()=>speak(message)} className="icon-button bg-soft-green text-primary"><Play size={18}/></button><div className="flex-1"><p className="font-black">{home}</p><p className="text-sm text-subtle">Voice complaint • {message}</p></div><span className={status==="Solved"?"status-ok":"status-warn"}>{status}</span></div>)}</div></section>}
+ </main>
+}
+
+function Buyer({userIndex,setUserIndex,stock,enquiries,setEnquiries,speak,notify}:{userIndex:number;setUserIndex:(n:number)=>void;stock:Record<StockKey,number>;enquiries:Enquiry[];setEnquiries:React.Dispatch<React.SetStateAction<Enquiry[]>>;speak:(s:string)=>void;notify:(s:string)=>void}) {
+ const buyer=users.buyer[userIndex]??users.buyer[0]??fallbackUser, material=buyerMaterials[userIndex]??"wet", demand=[150,35,50,100,90][userIndex]??150, [quantity,setQuantity]=useState(25), [rate,setRate]=useState([2.5,8,24,4,5][userIndex]??2.5);
+ const send=()=>{setEnquiries(es=>[{id:Date.now(),buyer:buyer[1],material,quantity,rate,status:"pending"},...es]);notify("पूछताछ पंचायत को भेजी गई");};
+ return <main className="content-wrap"><div className="mb-6 flex gap-2 overflow-x-auto pb-2">{users.buyer.map((u,i)=><button key={u[0]} onClick={()=>setUserIndex(i)} className={`buyer-chip ${i===userIndex?"buyer-chip-active":""}`}>{u[1]}</button>)}</div><div className="grid gap-5 lg:grid-cols-[1fr_.8fr]"><section className="panel"><SectionTitle kicker="आपका माल" title={`${materialLabels[material]} • ${buyer[1]}`}/><div className="grid grid-cols-2 gap-3"><Kpi value={`${stock[material]} kg`} label="उपलब्ध"/><Kpi value={`${demand} kg`} label="माँग"/></div><p className={`mt-4 rounded-xl p-3 text-sm font-black ${stock[material]>=demand?"bg-soft-green text-primary":"bg-amber-pale text-ochre"}`}>{stock[material]>=demand?<><Check className="mr-2 inline" size={17}/>माल पर्याप्त है</>:`अभी कम है ${demand-stock[material]} kg`}</p>{material==="mlp"&&demand>stock.mlp&&<p className="mt-3 text-sm font-bold text-primary">MLP demand is higher than stock. Improve segregation.</p>}<div className="mt-5 grid grid-cols-2 gap-3"><label className="field-label">Quantity (kg)<input className="field" type="number" value={quantity} onChange={e=>setQuantity(Number(e.target.value))}/></label><label className="field-label">Rate<input className="field" type="number" step=".5" value={rate} onChange={e=>setRate(Number(e.target.value))}/><span className="text-xs">₹{rate}/kg</span></label></div><button onClick={send} className="primary-button mt-5 w-full">पूछताछ भेजें<ArrowRight size={18}/></button><p className="mt-2 text-center text-xs font-bold text-subtle">पंचायत को भेजा</p></section><section className="panel"><SectionTitle kicker="आपकी enquiries" title="स्थिति"/>{enquiries.length?enquiries.filter(e=>e.buyer===buyer[1]).map(e=><div className="mb-3 rounded-xl border border-border p-3" key={e.id}><div className="flex justify-between"><b>{e.quantity} kg • ₹{e.rate}/kg</b><span className={e.status==="approved"?"status-ok":"status-warn"}>{e.status}</span></div></div>):<p className="text-sm text-subtle">अभी कोई पूछताछ नहीं।</p>}<p className="mt-5 rounded-xl bg-secondary p-3 text-xs font-bold text-subtle">पंचायत के approval के बाद ही stock घटेगा। Payment इस prototype में नहीं है।</p></section></div></main>
+}
+
+function BinCharacter({bin,compact=false,tiny=false,speak}:{bin:Bin;compact?:boolean;tiny?:boolean;speak:(s:string)=>void}) {
+ const full=bin.fill>=80, filling=bin.fill>=50&&!full, phrase=full?"मुझे खाली करो!":filling?"भर रहा है":"खाली";
+ return <div className={`relative flex shrink-0 flex-col items-center ${tiny?"w-14":compact?"w-20":"w-28"}`}>{full&&!tiny&&<span className="bin-speech">मुझे खाली करो!</span>}<div className={`bin-character ${full?"bin-full":filling?"bin-filling":"bin-empty"} ${tiny?"bin-tiny":compact?"bin-compact":""}`}><div className="bin-lid"/><div className="bin-body"><div className="bin-level" style={{height:`${bin.fill}%`}}/><div className="bin-eye eye-left"/><div className="bin-eye eye-right"/><div className={`bin-mouth ${full?"mouth-open":filling?"mouth-worry":"mouth-smile"}`}/><div className="bin-percent">{bin.fill}%</div></div><div className="bin-foot foot-left"/><div className="bin-foot foot-right"/></div>{!tiny&&<><div className="mt-3 text-center text-[11px] font-bold text-forest">{bin.name}</div><div className={`mt-1 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-extrabold ${full?"bg-red-soft text-red-deep":filling?"bg-amber-pale text-ochre":"bg-soft-green text-primary"}`}><span className={`h-1.5 w-1.5 rounded-full ${full?"bg-destructive":filling?"bg-amber":"bg-primary"}`}/>{phrase}</div><button onClick={()=>speak(phrase)} className="mt-2 inline-flex items-center gap-1 text-[10px] font-extrabold text-ochre"><Volume2 size={12}/>सुनें</button></>}</div>
+}
+
+function RouteMap({bins}:{bins:Bin[]}) { return <div className="route-map mt-4"><svg viewBox="0 0 360 230" className="h-full w-full" aria-label="Village route map"><path d="M34 190 C80 80 126 176 170 70 S274 66 328 30" fill="none" stroke="currentColor" strokeWidth="4" strokeDasharray="8 7"/>{bins.slice(0,12).map((b,i)=><g key={b.id} transform={`translate(${32+(i%4)*96} ${35+Math.floor(i/4)*78})`}><circle r="14" className={b.fill>=80?"fill-destructive":"fill-primary"}/><text y="4" textAnchor="middle" className="fill-primary-foreground text-[10px] font-black">{i+1}</text><text y="27" textAnchor="middle" className="fill-foreground text-[8px] font-bold">{b.name.slice(0,8)}</text></g>)}</svg></div> }
+function SectionTitle({kicker,title}:{kicker:string;title:string}) { return <div className="mb-5"><p className="text-xs font-black text-ochre">{kicker}</p><h2 className="mt-1 font-heading text-2xl font-black text-primary">{title}</h2></div> }
+function Kpi({value,label}:{value:string;label:string}) { return <div className="kpi"><p>{value}</p><span>{label}</span></div> }
+function Footer({reset}:{reset:()=>void}) { return <footer className="mx-auto mt-12 max-w-6xl border-t border-border px-4 py-8 text-center text-xs font-bold text-subtle"><p>Prototype with simulated data. Rates, costs and savings are example assumptions. • Trend-based, not machine learning</p><div className="mt-4 flex items-center justify-center gap-4"><span>इस डिवाइस पर सेव है</span><button onClick={reset} className="inline-flex items-center gap-1 text-primary"><RotateCcw size={14}/>डेमो रीसेट</button></div></footer> }
+function DriverScore({name,id,score,best=false}:{name:string;id:string;score:number;best?:boolean}) { return <div className="panel"><div className="flex items-start justify-between"><div><h3 className="text-lg font-black text-primary">{name}</h3><p className="text-xs font-bold text-subtle">{id}</p></div>{best&&<span className="rounded-full bg-amber-pale px-3 py-1 text-xs font-black text-ochre">★ Best collector</span>}</div><div className="mt-5 flex items-end gap-3"><span className="text-5xl font-black text-primary">{score}</span><span className="pb-1 text-sm font-bold text-subtle">/ 100</span></div><div className="mt-4 h-2 rounded-full bg-secondary"><div className="h-full rounded-full bg-primary" style={{width:`${score}%`}}/></div></div> }
+function RatingPanel({title,notify}:{title:string;notify:(s:string)=>void}) { const [stars,setStars]=useState(5),[reason,setReason]=useState(""); return <section><SectionTitle kicker="साफ़ काम की पहचान" title={title}/><div className="panel mx-auto max-w-xl"><div className="flex gap-2">{[1,2,3,4,5].map(n=><button key={n} onClick={()=>setStars(n)} className={n<=stars?"text-amber":"text-border"}><Star fill="currentColor"/></button>)}</div><label className="field-label mt-5">कारण<textarea className="field min-h-24" value={reason} onChange={e=>setReason(e.target.value)}/></label><label className="secondary-button mt-4 cursor-pointer"><Upload size={17}/>Segregation photo<input className="hidden" type="file" accept="image/*"/></label><button onClick={()=>{if(reason)notify("घर की rating सेव हो गई")}} className="primary-button mt-5 w-full">रेटिंग भेजें</button></div></section> }
+function Recorder({notify}:{notify:(s:string)=>void}) { const [recording,setRecording]=useState(false),[url,setUrl]=useState(""); const media=useRef<MediaRecorder|null>(null),chunks=useRef<Blob[]>([]); const toggle=async()=>{if(recording){media.current?.stop();setRecording(false);return;}try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});const r=new MediaRecorder(stream);chunks.current=[];r.ondataavailable=e=>chunks.current.push(e.data);r.onstop=()=>{setUrl(URL.createObjectURL(new Blob(chunks.current,{type:"audio/webm"})));stream.getTracks().forEach(t=>t.stop())};r.start();media.current=r;setRecording(true)}catch{notify("Microphone permission is needed")}}; return <div className="flex items-center gap-2"><button onClick={toggle} className={`secondary-button ${recording?"text-destructive":""}`}><Mic size={17}/>{recording?"रिकॉर्डिंग रोकें":"Voice note"}</button>{url&&<audio className="h-9 w-36" controls src={url}/>}</div> }
+function Modal({title,close,children}:{title:string;close:()=>void;children:React.ReactNode}) { return <div className="fixed inset-0 z-40 grid place-items-center bg-overlay p-4" onMouseDown={close}><div className="w-full max-w-lg rounded-3xl bg-card p-6 shadow-hero" onMouseDown={e=>e.stopPropagation()}><div className="flex justify-between"><h2 className="font-heading text-xl font-black text-primary">{title}</h2><button className="icon-button" onClick={close}>×</button></div><div className="mt-5">{children}</div></div></div> }
