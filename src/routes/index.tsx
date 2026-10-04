@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   ArrowRight, Check, CircleDollarSign, Factory, Info, Leaf, MapPin, Mic,
-  Play, RadioTower, Recycle, RotateCcw, ShieldAlert, ShoppingBag, Star,
+  LogOut, Play, RadioTower, Recycle, RotateCcw, ShieldAlert, ShoppingBag, Star,
   Truck, Upload, UserRound, Volume2, type LucideIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -47,9 +47,9 @@ const buyerMaterials: StockKey[] = ["wet", "paper", "pet", "mlp", "mlp"];
 const materialLabels: Record<StockKey, string> = { wet: "गीला", paper: "कागज़", pet: "PET", mlp: "MLP", hazardous: "खतरनाक" };
 
 const copy = {
-  hi: { hello: "नमस्ते", voice: "आवाज़ सुनाएँ", route: "आज का रास्ता", rate: "घर को रेटिंग", overview: "गाँव का हाल", drivers: "ड्राइवर", stock: "भंडार और कमाई", complaints: "शिकायतें", pickup: "गाड़ी बुलाएँ", separate: "कचरा अलग करें", myrating: "मेरी रेटिंग", demo: "डेमो शुरू करें" },
-  en: { hello: "Hello", voice: "Play voice guide", route: "Today's route", rate: "Rate household", overview: "Village overview", drivers: "Drivers", stock: "Stock & income", complaints: "Complaints", pickup: "Call vehicle", separate: "Sort waste", myrating: "My rating", demo: "Start demo" },
-  pa: { hello: "ਸਤ ਸ੍ਰੀ ਅਕਾਲ", voice: "ਆਵਾਜ਼ ਸੁਣੋ", route: "ਅੱਜ ਦਾ ਰਸਤਾ", rate: "ਘਰ ਨੂੰ ਰੇਟਿੰਗ", overview: "ਪਿੰਡ ਦਾ ਹਾਲ", drivers: "ਡਰਾਈਵਰ", stock: "ਭੰਡਾਰ ਤੇ ਕਮਾਈ", complaints: "ਸ਼ਿਕਾਇਤਾਂ", pickup: "ਗੱਡੀ ਬੁਲਾਓ", separate: "ਕੂੜਾ ਵੱਖ ਕਰੋ", myrating: "ਮੇਰੀ ਰੇਟਿੰਗ", demo: "ਡੈਮੋ ਸ਼ੁਰੂ ਕਰੋ" },
+  hi: { hello: "नमस्ते", voice: "आवाज़ सुनाएँ", route: "आज का रास्ता", rate: "घर को रेटिंग", overview: "गाँव का हाल", drivers: "ड्राइवर", stock: "भंडार और कमाई", complaints: "शिकायतें", pickup: "गाड़ी बुलाएँ", separate: "कचरा अलग करें", myrating: "मेरी रेटिंग", demo: "डेमो शुरू करें", switchRole: "भूमिका बदलें" },
+  en: { hello: "Hello", voice: "Play voice guide", route: "Today's route", rate: "Rate household", overview: "Village overview", drivers: "Drivers", stock: "Stock & income", complaints: "Complaints", pickup: "Call vehicle", separate: "Sort waste", myrating: "My rating", demo: "Start demo", switchRole: "Switch role" },
+  pa: { hello: "ਸਤ ਸ੍ਰੀ ਅਕਾਲ", voice: "ਆਵਾਜ਼ ਸੁਣੋ", route: "ਅੱਜ ਦਾ ਰਸਤਾ", rate: "ਘਰ ਨੂੰ ਰੇਟਿੰਗ", overview: "ਪਿੰਡ ਦਾ ਹਾਲ", drivers: "ਡਰਾਈਵਰ", stock: "ਭੰਡਾਰ ਤੇ ਕਮਾਈ", complaints: "ਸ਼ਿਕਾਇਤਾਂ", pickup: "ਗੱਡੀ ਬੁਲਾਓ", separate: "ਕੂੜਾ ਵੱਖ ਕਰੋ", myrating: "ਮੇਰੀ ਰੇਟਿੰਗ", demo: "ਡੈਮੋ ਸ਼ੁਰੂ ਕਰੋ", switchRole: "ਭੂਮਿਕਾ ਬਦਲੋ" },
 };
 
 export const Route = createFileRoute("/")({
@@ -84,7 +84,7 @@ function App() {
   const reset = () => { setBins(initialBins); setStock({ wet: 120, paper: 45, pet: 30, mlp: 60, hazardous: 5 }); setIncome(1240); setEnquiries([]); setRatings(["समय पर आए और सफाई अच्छी की।", "गीला-सूखा समझाया।"]); setLoggedIn(false); setRole("villager"); setUserIndex(0); };
   if (!loggedIn) return <Login role={role} setRole={(r) => { setRole(r); setUserIndex(0); }} userIndex={userIndex} setUserIndex={setUserIndex} lang={lang} setLang={setLang} onEnter={() => setLoggedIn(true)} speak={speak} />;
   return <div className="min-h-svh bg-background text-foreground">
-    <Header role={role} user={user} lang={lang} setLang={setLang} speak={() => speak(role === "gp" ? "एक नज़र में गाँव, डिब्बे और आज की कार्रवाई" : "डिब्बा बोलेगा, आप बस एक बटन दबाइए")} t={t} />
+    <Header role={role} user={user} lang={lang} setLang={setLang} speak={() => speak(role === "gp" ? "एक नज़र में गाँव, डिब्बे और आज की कार्रवाई" : "डिब्बा बोलेगा, आप बस एक बटन दबाइए")} t={t} onExit={() => setLoggedIn(false)} />
     {role === "villager" && <Villager bins={bins} setBins={setBins} ratings={ratings} setRatings={setRatings} speak={speak} t={t} notify={setToast} />}
     {role === "driver" && <Driver bins={bins} setBins={setBins} setStock={setStock} speak={speak} t={t} notify={setToast} />}
     {role === "gp" && <GP bins={bins} setBins={setBins} stock={stock} setStock={setStock} income={income} setIncome={setIncome} enquiries={enquiries} setEnquiries={setEnquiries} ratings={ratings} speak={speak} t={t} notify={setToast} />}
@@ -116,11 +116,11 @@ function Login({ role, setRole, userIndex, setUserIndex, lang, setLang, onEnter,
 
 function Language({lang,setLang}:{lang:Language;setLang:(l:Language)=>void}) { return <div className="flex rounded-full bg-secondary p-1">{(["pa","hi","en"] as Language[]).map(l=><button key={l} onClick={()=>setLang(l)} className={`rounded-full px-2.5 py-1 text-[11px] font-black ${lang===l?"bg-primary text-primary-foreground":"text-subtle"}`}>{l==="pa"?"ਪੰਜਾਬੀ":l==="hi"?"हिन्दी":"English"}</button>)}</div> }
 
-function Header({role,user,lang,setLang,speak,t}:{role:Role;user:string[];lang:Language;setLang:(l:Language)=>void;speak:()=>void;t:typeof copy.hi}) {
+function Header({role,user,lang,setLang,speak,t,onExit}:{role:Role;user:string[];lang:Language;setLang:(l:Language)=>void;speak:()=>void;t:typeof copy.hi;onExit:()=>void}) {
  const firstName=user[1]?.split(" ")[0] ?? user[1];
  const title=role==="villager"?`${t.hello}, ${firstName} 👋`:role==="driver"?`${t.hello}, ${firstName} जी`:role==="gp"?t.overview:"अपना माल बेचें";
  const subtitle=role==="villager"?"डिब्बा बोलेगा, आप बस एक बटन दबाइए। बाकी रास्ता गाड़ी ढूँढ लेगी।":role==="driver"?"आज पहले लाल डिब्बे, फिर बाकी रास्ता।":role==="gp"?"एक नज़र में गाँव, डिब्बे और आज की कार्रवाई।":"स्टॉक और आपकी ज़रूरत — साफ़ हिसाब।";
- return <header className="bg-primary text-primary-foreground"><div className="mx-auto max-w-6xl px-4 pb-8 pt-4 sm:px-8"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-2 font-heading font-black"><span className="grid h-9 w-9 place-items-center rounded-xl bg-amber text-primary"><Recycle size={20}/></span>Dibba Bolega</div><div className="flex items-center gap-2"><Language lang={lang} setLang={setLang}/><button className="icon-button bg-primary-deep" onClick={speak} aria-label={t.voice}><Volume2 size={18}/></button></div></div><div className="mt-7 flex items-end justify-between gap-4"><div><p className="text-xs font-bold text-mint">{role==="villager"?`${user[2]} • ${user[3]}`:role==="driver"?user[3]:role==="gp"?`${user[2]} • ${user[0]}`:`${user[0]} • ${user[3]}`}</p><h1 className="mt-2 font-heading text-3xl font-black">{title}</h1><p className="mt-2 max-w-xl text-sm text-mint">{subtitle}</p></div><button className="hidden items-center gap-2 rounded-xl bg-primary-deep px-3 py-2 text-xs font-bold sm:flex" onClick={speak}><Volume2 size={16}/>{t.voice}</button></div></div></header>
+ return <header className="bg-primary text-primary-foreground"><div className="mx-auto max-w-6xl px-4 pb-8 pt-4 sm:px-8"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-2 font-heading font-black"><span className="grid h-9 w-9 place-items-center rounded-xl bg-amber text-primary"><Recycle size={20}/></span>Dibba Bolega</div><div className="flex flex-wrap items-center justify-end gap-2"><Language lang={lang} setLang={setLang}/><button className="icon-button bg-primary-deep" onClick={speak} aria-label={t.voice}><Volume2 size={18}/></button><button className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary-deep px-3 py-2 text-xs font-bold" onClick={onExit}><LogOut size={16}/>{t.switchRole}</button></div></div><div className="mt-7 flex items-end justify-between gap-4"><div><p className="text-xs font-bold text-mint">{role==="villager"?`${user[2]} • ${user[3]}`:role==="driver"?user[3]:role==="gp"?`${user[2]} • ${user[0]}`:`${user[0]} • ${user[3]}`}</p><h1 className="mt-2 font-heading text-3xl font-black">{title}</h1><p className="mt-2 max-w-xl text-sm text-mint">{subtitle}</p></div><button className="hidden items-center gap-2 rounded-xl bg-primary-deep px-3 py-2 text-xs font-bold sm:flex" onClick={speak}><Volume2 size={16}/>{t.voice}</button></div></div></header>
 }
 
 function Nav({items,active,setActive}:{items:[string,string,React.ReactNode][];active:string;setActive:(s:string)=>void}) { return <nav className="-mt-4 mb-7 overflow-x-auto"><div className="mx-auto flex w-max min-w-[calc(100%-2rem)] max-w-4xl gap-1 rounded-2xl border border-border bg-card p-1.5 shadow-panel">{items.map(([id,label,icon])=><button key={id} onClick={()=>setActive(id)} className={`nav-button ${active===id?"nav-active":""}`}>{icon}{label}</button>)}</div></nav> }
